@@ -189,7 +189,7 @@ const saveGameState = () => {
       g.correct ? '🟩' : '🟥'
     ).join('');
     
-    const text = `Country Flag Guessing Game ${gameState.currentDate}\n${scoreDisplay}\nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-football.netlify.app/`;
+    const text = `Country Flag Guessing Game ${gameState.currentDate}\n${scoreDisplay}\nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
     
     if (navigator.share) {
       navigator.share({
