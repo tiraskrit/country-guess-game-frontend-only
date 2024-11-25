@@ -1,0 +1,15 @@
+# Frontend-specific files
+frontend/node_modules/
+frontend/dist/
+frontend/.cache/
+frontend/package-lock.json
+frontend/.vite/
+frontend/.vite-cache/
+frontend/.env
+
+
+# Flask configuration
+backend/*.pyc
+backend/*.pyo
+backend/__pycache__/
+backend/.env

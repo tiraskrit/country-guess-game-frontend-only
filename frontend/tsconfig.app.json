@@ -1,0 +1,15 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+      "baseUrl": "./",
+      "paths": {
+        "@/*": ["./src/*"]
+      },
+      "allowJs": true
+    },
+    "include": [
+      "src/**/*.js",
+      "src/**/*.jsx"
+    ]
+  }
+  

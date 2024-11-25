@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+      "composite": true,
+      "module": "CommonJS",
+      "esModuleInterop": true,
+      "allowJs": true,
+      "outDir": "./dist"
+    },
+    "include": [
+      "src/**/*.js",
+      "src/**/*.jsx"
+    ]
+  }
+  
