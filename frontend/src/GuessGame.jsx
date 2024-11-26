@@ -190,14 +190,23 @@ const saveGameState = () => {
     ).join('');
 
     let text;
+    const lastGuess = gameState.guesses[gameState.guesses.length - 1];
 
     if (gameState.hintLevel == 0){
-      text = `${scoreDisplay} \nI guessed the country in my first try, can you beat this? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
+      text = `${scoreDisplay} \nI guessed the country in my first try😊, can you beat this? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
     }
-    else {
+    else if (gameState.hintLevel < 4){
       text = `${scoreDisplay} \nIt took me ${gameState.hintLevel + 1} tries to Guess the Country, can you beat this? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
     }
+    else {
+      if (lastGuess.correct) {
+        text = `${scoreDisplay} \nI guessed the country on my last try😫! Can you beat this? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
+      } else {
+        text = `${scoreDisplay} \nI could not guess the country😞, can you? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
+      }
+    }
     console.log(text)
+    console.log(gameState.hintLevel)
     if (navigator.share) {
       navigator.share({
         text,
