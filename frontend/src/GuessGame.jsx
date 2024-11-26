@@ -188,9 +188,16 @@ const saveGameState = () => {
     const scoreDisplay = gameState.guesses.map(g => 
       g.correct ? '🟩' : '🟥'
     ).join('');
-    
-    const text = `Country Flag Guessing Game ${gameState.currentDate}\n${scoreDisplay}\nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
-    
+
+    let text;
+
+    if (gameState.hintLevel == 0){
+      text = `${scoreDisplay} \nI guessed the country in my first try, can you beat this? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
+    }
+    else {
+      text = `${scoreDisplay} \nIt took me ${gameState.hintLevel + 1} tries to Guess the Country, can you beat this? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
+    }
+    console.log(text)
     if (navigator.share) {
       navigator.share({
         text,
