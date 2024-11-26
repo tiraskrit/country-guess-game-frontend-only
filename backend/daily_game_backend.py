@@ -69,6 +69,8 @@ class DailyCountryGame:
                 # Generate list of country names for autocomplete with error handling
                 try:
                     country_names = [country['name']['common'] for country in self.country_pool]
+                    # Sort the country names alphabetically
+                    country_names.sort()
                     with open('country_names.json', 'w', encoding='utf-8') as f:
                         json.dump(country_names, f, ensure_ascii=False)
                 except Exception as write_error:
@@ -169,7 +171,6 @@ class DailyCountryGame:
                         'population': country.get('population', 0),
                         'map_url': country['maps']['googleMaps']
                     }
-                    print(self.current_country['flag_url'])
                     self._save_cache(self.current_country)
                 else:
                     print("Error: No country available in pool or backup.")
