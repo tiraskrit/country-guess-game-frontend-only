@@ -255,40 +255,40 @@ const saveGameState = () => {
   }, []);
 
   return (
-    <div className="min-h-screen h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4 sm:p-6">
+    <div className="min-h-screen h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-2 sm:p-4 md:p-6">
       <Card className="w-full max-w-4xl h-full mx-auto shadow-lg border-0 flex flex-col overflow-hidden">
-        <CardHeader className="bg-white rounded-t-lg border-b border-gray-200 py-4">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-            <CardTitle className="text-4xl sm:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-800">
+        <CardHeader className="bg-white rounded-t-lg border-b border-gray-200 py-2 sm:py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-6">
+            <CardTitle className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-800">
               Guess the Country
             </CardTitle>
-            <div className="flex items-center text-sm text-gray-700 bg-gray-100 rounded-full px-5 py-3 shadow-sm">
-              <Clock className="w-5 h-5 mr-2 text-blue-600" />
+            <div className="flex items-center text-xs sm:text-sm text-gray-700 bg-gray-100 rounded-full px-3 sm:px-5 py-2 sm:py-3 shadow-sm">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 text-blue-600" />
               <span>Next flag in: {timeUntilReset}</span>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col justify-between p-6">
+        <CardContent className="flex-1 flex flex-col justify-between p-2 sm:p-4 md:p-6">
           {gameState.loading ? (
             <div className="flex justify-center items-center flex-grow">
-              <RefreshCw className="animate-spin text-blue-600 w-12 h-12" />
+              <RefreshCw className="animate-spin text-blue-600 w-8 h-8 sm:w-12 sm:h-12" />
             </div>
           ) : (
             <>
               {/* Flag Image */}
-              <div className="flex-grow flex justify-center items-center bg-gradient-to-b from-white to-gray-50 rounded-xl overflow-hidden shadow-md p-6 max-h-[300px] md:max-h-[400px]">
+              <div className="flex-grow flex justify-center items-center bg-gradient-to-b from-white to-gray-50 rounded-xl overflow-hidden shadow-md p-2 sm:p-4 md:p-6 max-h-[200px] sm:max-h-[300px] md:max-h-[400px]">
                 <img
                   src={getImageSource(gameState.currentImage)}
                   alt="Country Flag"
-                  className="w-auto h-[300px] object-contain rounded-lg transition-transform duration-300 hover:scale-105"
+                  className="w-auto h-[150px] sm:h-[250px] md:h-[300px] object-contain rounded-lg transition-transform duration-300 hover:scale-105"
                 />
               </div>
   
               {/* Alerts */}
-              <div className="mt-4">
+              <div className="mt-2 sm:mt-4">
                 {gameState.gameOver && gameState.playerName && (
-                  <Alert className="mb-3 bg-blue-100 border border-blue-200 shadow-sm">
-                    <AlertDescription className="text-blue-900 font-semibold text-sm">
+                  <Alert className="mb-2 sm:mb-3 bg-blue-100 border border-blue-200 shadow-sm">
+                    <AlertDescription className="text-blue-900 font-semibold text-xs sm:text-sm">
                       The Country was: <span className="font-extrabold text-blue-800">{gameState.playerName}</span>
                     </AlertDescription>
                   </Alert>
@@ -296,7 +296,7 @@ const saveGameState = () => {
   
                 {gameState.message && (
                   <Alert
-                    className={`mb-3 text-sm rounded-lg shadow-sm ${
+                    className={`mb-2 sm:mb-3 text-xs sm:text-sm rounded-lg shadow-sm ${
                       gameState.gameOver
                         ? 'bg-green-100 border-green-200'
                         : 'bg-gray-100 border-gray-200'
@@ -310,7 +310,7 @@ const saveGameState = () => {
                       {gameState.message}
                     </AlertDescription>
                     {!gameState.gameOver && gameState.hintText && (
-                      <AlertDescription className="mt-1 text-gray-700 italic">
+                      <AlertDescription className="mt-1 text-gray-700 italic text-xs sm:text-sm">
                         {gameState.hintText}
                       </AlertDescription>
                     )}
@@ -319,20 +319,20 @@ const saveGameState = () => {
               </div>
   
               {/* Input Form */}
-              <form onSubmit={handleGuess} className="flex-none space-y-4 mt-4">
+              <form onSubmit={handleGuess} className="flex-none space-y-2 sm:space-y-4 mt-2 sm:mt-4">
                 <AutocompleteInput
                   value={guess}
                   onChange={setGuess}
                   options={players}
                   placeholder="Enter the Country"
                   disabled={gameState.gameOver}
-                  className="w-full rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                 />
-                <div className="flex gap-4">
+                <div className="flex gap-2 sm:gap-4">
                   <Button
                     type="submit"
                     disabled={gameState.gameOver}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-medium py-3 rounded-lg shadow-md transition-transform duration-200 hover:scale-105"
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-medium py-2 sm:py-3 text-sm sm:text-base rounded-lg shadow-md transition-transform duration-200 hover:scale-105"
                   >
                     Guess
                   </Button>
@@ -340,9 +340,9 @@ const saveGameState = () => {
                     <Button
                       onClick={shareResult}
                       variant="outline"
-                      className="flex items-center justify-center gap-3 border-2 border-gray-300 hover:border-gray-400 bg-white text-gray-800 hover:bg-gray-100 shadow-sm rounded-lg py-3 px-4 transition-all duration-200"
+                      className="flex items-center justify-center gap-2 sm:gap-3 border-2 border-gray-300 hover:border-gray-400 bg-white text-gray-800 hover:bg-gray-100 shadow-sm rounded-lg py-2 sm:py-3 px-3 sm:px-4 text-sm sm:text-base transition-all duration-200"
                     >
-                      <Share2 className="w-5 h-5" />
+                      <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
                       Share
                     </Button>
                   )}
@@ -350,11 +350,11 @@ const saveGameState = () => {
               </form>
   
               {/* Guesses */}
-              <div className="mt-6 flex flex-wrap gap-3 justify-center sm:justify-start">
+              <div className="mt-4 sm:mt-6 flex flex-wrap gap-2 sm:gap-3 justify-center sm:justify-start">
                 {gameState.guesses.map((g, i) => (
                   <div
                     key={i}
-                    className={`w-10 h-10 rounded-lg transform transition-all duration-200 ${
+                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg transform transition-all duration-200 ${
                       g.correct
                         ? 'bg-gradient-to-br from-green-400 to-green-500 hover:from-green-500 hover:to-green-600'
                         : 'bg-gradient-to-br from-red-400 to-red-500 hover:from-red-500 hover:to-red-600'
