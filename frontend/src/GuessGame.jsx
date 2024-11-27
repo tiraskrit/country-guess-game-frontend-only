@@ -205,8 +205,6 @@ const saveGameState = () => {
         text = `${scoreDisplay} \nI could not guess the country😞, can you? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
       }
     }
-    console.log(text)
-    console.log(gameState.hintLevel)
     if (navigator.share) {
       navigator.share({
         text,
