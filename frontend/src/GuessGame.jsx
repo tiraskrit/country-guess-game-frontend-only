@@ -27,12 +27,38 @@ const GuessGame = () => {
   const [players, setPlayers] = useState([]);
   const [filteredPlayers, setFilteredPlayers] = useState([]);
   const [showRules, setShowRules] = useState(true);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const formatTimeUntilReset = (seconds) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
   };
+
+  useEffect(() => {
+    const checkGameStatus = () => {
+      const gameStatus = localStorage.getItem(`gameStatus_${gameState.currentDate}`);
+      if (gameStatus === 'completed') {
+        setIsBlocked(true);
+        
+        // Restore previous game state for sharing
+        const stored = localStorage.getItem('footballGuessGame');
+        if (stored) {
+          const { guesses, playerName } = JSON.parse(stored);
+          setGameState(prev => ({
+            ...prev,
+            guesses,
+            playerName,
+            gameOver: true
+          }));
+        }
+      }
+    };
+    
+    if (gameState.currentDate) {
+      checkGameStatus();
+    }
+  }, [gameState.currentDate]);
   
   const checkStoredGame = () => {
     const stored = localStorage.getItem('footballGuessGame');
@@ -52,16 +78,21 @@ const GuessGame = () => {
     return false;
   };
 
-const saveGameState = () => {
-  const toStore = {
-    date: gameState.currentDate,
-    guesses: gameState.guesses,
-    hintLevel: gameState.hintLevel,
-    gameOver: gameState.gameOver,
-    playerName: gameState.playerName
+  const saveGameState = () => {
+    const toStore = {
+      date: gameState.currentDate,
+      guesses: gameState.guesses,
+      hintLevel: gameState.hintLevel,
+      gameOver: gameState.gameOver,
+      playerName: gameState.playerName
+    };
+    localStorage.setItem('footballGuessGame', JSON.stringify(toStore));
+    
+    if (gameState.gameOver) {
+      localStorage.setItem(`gameStatus_${gameState.currentDate}`, 'completed');
+      setIsBlocked(true);
+    }
   };
-  localStorage.setItem('footballGuessGame', JSON.stringify(toStore));
-};
   
   const fetchGameState = async () => {
     setGameState(prev => ({ ...prev, loading: true }));
@@ -117,6 +148,14 @@ const saveGameState = () => {
 
   const handleGuess = async (e) => {
     e.preventDefault();
+
+    if (isBlocked) {
+      setGameState(prev => ({
+        ...prev,
+        message: 'You\'ve already completed today\'s game. Come back tomorrow!'
+      }));
+      return;
+    }
     
     if (!guess.trim()) return;
     
@@ -338,19 +377,19 @@ const saveGameState = () => {
                   value={guess}
                   onChange={setGuess}
                   options={players}
-                  placeholder="Enter the Country"
-                  disabled={gameState.gameOver}
+                  placeholder={isBlocked ? "Game over, Come back tomorrow!" : "Enter the Country"}
+                  disabled={gameState.gameOver || isBlocked}
                   className="w-full rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                 />
                 <div className="flex gap-2 sm:gap-4">
                   <Button
                     type="submit"
-                    disabled={gameState.gameOver}
+                    disabled={gameState.gameOver || isBlocked}
                     className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-medium py-2 sm:py-3 text-sm sm:text-base rounded-lg shadow-md transition-transform duration-200 hover:scale-105"
                   >
                     Guess
                   </Button>
-                  {gameState.gameOver && (
+                  {(gameState.gameOver || isBlocked) && (
                     <Button
                       onClick={shareResult}
                       variant="outline"
