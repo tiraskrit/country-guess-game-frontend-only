@@ -80,9 +80,9 @@ class DailyCountryGame:
                 today = self._get_current_date()
                 random.seed(today)
                 random.shuffle(self.country_pool)
-            else:
-                print("Failed to fetch countries")
-                self._load_backup_countries()
+                return
+            print("Failed to fetch countries")
+            self._load_backup_countries()
         except Exception as e:
             print(f"Error fetching country pool: {str(e)}")
             self._load_backup_countries()
