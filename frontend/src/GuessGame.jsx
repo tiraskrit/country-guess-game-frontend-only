@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import AutocompleteInput from '@/components/ui/AutocompleteInput';
 import { API_URL } from './api.js';
 import RulesDialog from '@/components/RulesDialog';
+import { gameService } from './gameService';
 
 const GuessGame = () => {
   const [gameState, setGameState] = useState({
@@ -28,6 +29,7 @@ const GuessGame = () => {
   const [filteredPlayers, setFilteredPlayers] = useState([]);
   const [showRules, setShowRules] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [error, setError] = useState(false);
 
   const formatTimeUntilReset = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -59,6 +61,29 @@ const GuessGame = () => {
       checkGameStatus();
     }
   }, [gameState.currentDate]);
+
+  useEffect(() => {
+    const initGame = async () => {
+        try {
+            await gameService.initialize(() => fetchGameState());
+            fetchGameState();
+        } catch (err) {
+            console.error("Game initialization failed:", err);
+            setGameState(prev => ({
+                ...prev,
+                message: 'Critical error initializing game.',
+                loading: false
+            }));
+        }
+    };
+
+    initGame();
+
+    return () => {
+        gameService.cleanup();
+    };
+}, []);
+
   
   const checkStoredGame = () => {
     const stored = localStorage.getItem('footballGuessGame');
@@ -96,29 +121,39 @@ const GuessGame = () => {
   
   const fetchGameState = async () => {
     setGameState(prev => ({ ...prev, loading: true }));
+
     try {
-      const response = await fetch(`${API_URL}/api/game-state`);
-      const data = await response.json();
-      
-      setGameState(prev => ({
-        ...prev,
-        currentImage: data.blurred_image,
-        gameId: data.game_id,
-        nextReset: data.next_reset,
-        currentDate: data.current_date,
-        loading: false
-      }));
-      
-      checkStoredGame();
-      
+        const country = await gameService.getDailyCountry();
+
+        setGameState(prev => ({
+            ...prev,
+            currentImage: country.blurredImage,
+            gameId: country.name.hashCode?.() || Math.random(),
+            nextReset: gameService.getNextResetTime(),
+            currentDate: gameService.getCurrentDate(),
+            loading: false,
+            message: null
+        }));
+
+        checkStoredGame();
+
     } catch (error) {
-      setGameState(prev => ({
-        ...prev,
-        message: 'Error loading game',
-        loading: false
-      }));
+        console.error("Error in fetchGameState:", error);
+
+        if (error.message === 'Failed to fetch countries' && !localStorage.getItem('daily_country_cache')) {
+            console.warn("Game is loading with default settings.");
+            await gameService.loadCountries();
+            fetchGameState(); // Retry on recoverable error
+        } else {
+            setGameState(prev => ({
+                ...prev,
+                message: 'Loading game. Please wait or try refreshing the page.',
+                loading: false
+            }));
+        }
     }
-  };
+};
+
 
   const getImageSource = (imageData) => {
     if (!imageData) return '';
@@ -137,10 +172,14 @@ const GuessGame = () => {
   
   const fetchPlayerNames = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/player-names`);
-      const playerNames = await response.json();
-      setPlayers(playerNames);
-      setFilteredPlayers(playerNames);
+      const response = await fetch('https://restcountries.com/v3.1/all');
+      const countries = await response.json();
+      const names = countries
+        .filter(country => country.population > 500000 && country.cca2)
+        .map(country => country.name.common)
+        .sort();
+      setPlayers(names);
+      setFilteredPlayers(names);
     } catch (error) {
       console.error('Error fetching player names:', error);
     }
@@ -148,7 +187,7 @@ const GuessGame = () => {
 
   const handleGuess = async (e) => {
     e.preventDefault();
-
+    
     if (isBlocked) {
       setGameState(prev => ({
         ...prev,
@@ -160,18 +199,7 @@ const GuessGame = () => {
     if (!guess.trim()) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/guess`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          guess: guess.trim(),
-          hint_level: gameState.hintLevel
-        })
-      });
-      
-      const data = await response.json();
+      const data = await gameService.checkGuess(guess.trim(), gameState.hintLevel);
       
       const newGuesses = [...gameState.guesses, {
         guess: guess,
@@ -184,8 +212,8 @@ const GuessGame = () => {
           ...prev,
           guesses: newGuesses,
           gameOver: true,
-          currentImage: data.image_url,  // Use original image
-          playerName: data.player_name,
+          currentImage: data.imageUrl,
+          playerName: data.playerName,
           message: 'Congratulations! You got it right!'
         }));
       } else {
@@ -194,20 +222,17 @@ const GuessGame = () => {
             ...prev,
             guesses: newGuesses,
             gameOver: true,
-            currentImage: data.image_url,  // Use original image
-            playerName: data.player_name,
+            currentImage: data.imageUrl,
+            playerName: data.playerName,
             message: 'Game Over! Try again tomorrow!'
           }));
         } else {
-          // Regular hint progression
-          const newImage = data.image_url || data.hint_image;
-          
           setGameState(prev => ({
             ...prev,
             guesses: newGuesses,
             hintLevel: prev.hintLevel + 1,
-            currentImage: newImage,
-            hintText: data.hint_text,
+            currentImage: data.imageUrl,
+            hintText: data.hintText,
             message: 'Wrong guess! Here\'s your next hint:'
           }));
         }

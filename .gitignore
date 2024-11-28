@@ -6,11 +6,3 @@ frontend/package-lock.json
 frontend/.vite/
 frontend/.vite-cache/
 frontend/.env
-
-
-# Flask configuration
-backend/*.pyc
-backend/*.pyo
-backend/__pycache__/
-backend/.env
-backend/daily_country_cache.json
