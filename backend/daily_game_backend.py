@@ -21,7 +21,6 @@ class DailyCountryGame:
     def __init__(self):
         self.current_country = None
         self.blurred_flag = None
-        self.map_image = None
         self.last_reset_date = None
         self.country_pool = []
         
@@ -40,6 +39,7 @@ class DailyCountryGame:
                     if cached_date == self._get_current_date():
                         return cache.get('country')
                     else:
+                        # Explicitly clear cache for previous days
                         return None
             except (json.JSONDecodeError, KeyError):
                 return None
@@ -136,8 +136,7 @@ class DailyCountryGame:
                 'flags': {'png': 'https://flagcdn.com/w320/us.png'},
                 'capital': ['Washington, D.C.'],
                 'region': 'Americas',
-                'population': 331002651,
-                'maps': {'googleMaps': 'https://goo.gl/maps/e8M246zY4AFCf36n9'}
+                'population': 331002651
             }
         ]
     
@@ -151,16 +150,15 @@ class DailyCountryGame:
             cached_country = self._load_cache()
             if cached_country:
                 self.current_country = cached_country
+                self._process_images()  # Ensure images are processed for cached data
             else:
-                # Fetch country pool if it's empty
+                # Fetch new country data
                 if not self.country_pool:
                     self._fetch_country_pool()
                 
-                # Check if country pool is still empty after fetch
                 if not self.country_pool:
                     self._load_backup_countries()
                 
-                # Ensure we have a country in the pool
                 if self.country_pool:
                     country = self.country_pool[0]
                     self.current_country = {
@@ -168,18 +166,15 @@ class DailyCountryGame:
                         'flag_url': country['flags']['png'],
                         'capital': country['capital'][0] if country.get('capital') else 'N/A',
                         'continent': country.get('region', 'Unknown'),
-                        'population': country.get('population', 0),
-                        'map_url': country['maps']['googleMaps']
+                        'population': country.get('population', 0)
                     }
+                    self._process_images()
                     self._save_cache(self.current_country)
                 else:
                     print("Error: No country available in pool or backup.")
                     return None
-
-            # Process flag and map images 
-            if self.current_country:
-                self._process_images()
-                self.last_reset_date = current_date
+                    
+            self.last_reset_date = current_date
         
         return self.current_country
 
@@ -201,6 +196,12 @@ class DailyCountryGame:
         current_date = self._get_current_date()
         if self.last_reset_date != current_date:
             self.current_country = None  # Invalidate current country data
+            new_country = self._load_cache()  # Attempt to load or refresh cache
+            if not new_country:
+                # Force a refresh of the country pool
+                self.country_pool = []
+                self._fetch_country_pool()
+                self.get_daily_country()  # This will generate and cache new country
 
 game = DailyCountryGame()
 
@@ -277,6 +278,8 @@ def check_guess():
 if __name__ == '__main__':
     # Start a scheduler to run daily_check() every 24 hours
     scheduler = BackgroundScheduler()
-    scheduler.add_job(game.daily_check, 'interval', days=1)
+    scheduler.add_job(game.daily_check, 'interval', days=1, 
+                     start_date='2024-11-09 00:00:00',  # Set specific start time
+                     timezone=timezone.utc)  # Explicitly set timezone
     scheduler.start()
     app.run()

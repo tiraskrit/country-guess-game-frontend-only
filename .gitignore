@@ -13,3 +13,4 @@ backend/*.pyc
 backend/*.pyo
 backend/__pycache__/
 backend/.env
+backend/daily_country_cache.json
