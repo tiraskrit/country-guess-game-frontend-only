@@ -4,7 +4,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import AutocompleteInput from '@/components/ui/AutocompleteInput';
-import { API_URL } from './api.js';
 import RulesDialog from '@/components/RulesDialog';
 import { gameService } from './gameService';
 

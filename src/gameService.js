@@ -40,15 +40,7 @@ class GameService {
       }
       await this.getDailyCountry();
     } catch (error) {
-      console.warn('Failed to load countries. Using default country pool.');
-      // this.countryPool = [{
-      //   name: { common: 'United States' },
-      //   flags: { png: 'https://flagcdn.com/w320/us.png' },
-      //   capital: ['Washington, D.C.'],
-      //   region: 'Americas',
-      //   population: 331002651
-      // }];
-      // await this.getDailyCountry(); // Retry fetching the daily country after setting a default country pool
+      console.error('Failed to load countries!', error);
     }
   }
   
