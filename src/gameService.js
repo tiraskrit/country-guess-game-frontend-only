@@ -1,4 +1,4 @@
-import { format, isSameDay, startOfTomorrow, differenceInMilliseconds } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { ImageProcessor } from './imageProcessor';
 import { Share } from '@capacitor/share';
 
@@ -58,32 +58,37 @@ class GameService {
       clearTimeout(this.resetTimer);
     }
 
-    // Schedule next reset at midnight
-    const tomorrow = startOfTomorrow();
-    const timeUntilReset = differenceInMilliseconds(tomorrow, new Date());
+    // Calculate UTC midnight for the next day
+    const now = new Date();
+    const nextUtcMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    const timeUntilReset = nextUtcMidnight.getTime() - now.getTime();
 
+    // Schedule the reset
     this.resetTimer = setTimeout(async () => {
-      this.lastResetDate = null;
-      this.currentCountry = null;
-      localStorage.removeItem('daily_country_cache');
-      
-      // Reload countries and notify component
-      await this.loadCountries();
-      if (this.onReset) {
-        this.onReset();
-      }
-      
-      // Schedule next reset
-      this.scheduleNextReset();
+        this.lastResetDate = null;
+        this.currentCountry = null;
+        localStorage.removeItem('daily_country_cache');
+
+        // Reload countries and notify component
+        await this.loadCountries();
+        if (this.onReset) {
+            this.onReset();
+        }
+
+        // Schedule next reset
+        this.scheduleNextReset();
     }, timeUntilReset);
   }
 
   getCurrentDate() {
-    return format(new Date(), 'yyyy-MM-dd');
+    // Return the current UTC date in 'yyyy-MM-dd' format
+    return new Date().toISOString().split('T')[0];
   }
 
   getNextResetTime() {
-    return Math.floor((startOfTomorrow().getTime() - new Date().getTime()) / 1000);
+    const now = new Date();
+    const nextUtcMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    return Math.floor((nextUtcMidnight.getTime() - now.getTime()) / 1000);
   }
 
   loadCache() {
