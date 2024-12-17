@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import AutocompleteInput from '@/components/ui/AutocompleteInput';
 import RulesDialog from '@/components/RulesDialog';
 import { gameService } from './gameService';
+import { Share } from '@capacitor/share'; 
 
 const GuessGame = () => {
   const [gameState, setGameState] = useState({
@@ -29,6 +30,7 @@ const GuessGame = () => {
   const [showRules, setShowRules] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
   const [error, setError] = useState(false);
+  const [hasShared, setHasShared] = useState(false);
 
   const formatTimeUntilReset = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -117,40 +119,62 @@ const GuessGame = () => {
       setIsBlocked(true);
     }
   };
-  
-  const fetchGameState = async () => {
-    setGameState(prev => ({ ...prev, loading: true }));
 
-    try {
-        const country = await gameService.getDailyCountry();
-
+  useEffect(() => {
+    const initGameState = async () => {
+      try {
+        await gameService.initialize(); // Ensure initialization is complete
+        await gameService.loadCountries();
+        await fetchPlayerNames();
+        fetchGameState();
+      } catch (err) {
+        console.error("Initialization failed:", err);
         setGameState(prev => ({
-            ...prev,
-            currentImage: country.blurredImage,
-            gameId: country.name.hashCode?.() || Math.random(),
-            nextReset: gameService.getNextResetTime(),
-            currentDate: gameService.getCurrentDate(),
-            loading: false,
-            message: null
+          ...prev,
+          message: 'Error initializing game.',
+          loading: false,
         }));
+      }
+    };
+  
+    initGameState();
+  }, []);
+  
+  
+const fetchGameState = async (retryCount = 0, maxRetries = 3) => {
+  setGameState(prev => ({ ...prev, loading: true }));
 
-        checkStoredGame();
-
-    } catch (error) {
-        console.error("Error in fetchGameState:", error);
-
-        if (error.message === 'Failed to fetch countries' && !localStorage.getItem('daily_country_cache')) {
-            console.warn("Game is loading with default settings.");
-            await gameService.loadCountries();
-            fetchGameState(); // Retry on recoverable error
-        } else {
-            setGameState(prev => ({
-                ...prev,
-                message: 'Loading game. Please wait or try refreshing the page.',
-                loading: false
-            }));
-        }
+  try {
+    const country = await gameService.getDailyCountry();
+    if (!country || !country.blurredImage || !country.name) {
+      throw new Error("Invalid country data received");
     }
+
+    setGameState(prev => ({
+      ...prev,
+      currentImage: country.blurredImage,
+      gameId: country.name.hashCode?.() || Math.random(),
+      nextReset: gameService.getNextResetTime(),
+      currentDate: gameService.getCurrentDate(),
+      loading: false,
+      message: null,
+    }));
+
+    checkStoredGame();
+  } catch (error) {
+    console.error("Error in fetchGameState:", error);
+
+    if (retryCount < maxRetries) {
+      console.warn(`Retrying fetchGameState... (${retryCount + 1}/${maxRetries})`);
+      setTimeout(() => fetchGameState(retryCount + 1, maxRetries), 1000);
+    } else {
+      console.error("Max retries reached. Could not load the game.");
+      setGameState(prev => ({
+        ...prev,
+        loading: false,
+      }));
+    }
+  }
 };
 
 
@@ -169,20 +193,36 @@ const GuessGame = () => {
   };
 
   
-  const fetchPlayerNames = async () => {
+  const fetchPlayerNames = async (retryCount = 0, maxRetries = 3) => {
     try {
-      const response = await fetch('https://restcountries.com/v3.1/all');
+      const response = await fetch('https://restcountries.com/v3.1/all', {
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch countries');
+      
       const countries = await response.json();
       const names = countries
         .filter(country => country.population > 500000 && country.cca2)
         .map(country => country.name.common)
         .sort();
+      
       setPlayers(names);
       setFilteredPlayers(names);
     } catch (error) {
       console.error('Error fetching player names:', error);
+      setError(true);
+  
+      if (retryCount < maxRetries) {
+        console.warn(`Retrying fetchPlayerNames... (${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => fetchPlayerNames(retryCount + 1, maxRetries), 1000);
+      } else {
+        console.error("Max retries reached for fetching player names.");
+      }
     }
-  };
+  };  
+  
 
   const handleGuess = async (e) => {
     e.preventDefault();
@@ -247,14 +287,14 @@ const GuessGame = () => {
     }
   };
 
-  const shareResult = () => {
-    const scoreDisplay = gameState.guesses.map(g => 
+  const shareResult = async () => {
+    const scoreDisplay = gameState.guesses.map(g =>
       g.correct ? '🟩' : '🟥'
     ).join('');
-
+  
     let text;
     const lastGuess = gameState.guesses[gameState.guesses.length - 1];
-
+  
     if (gameState.hintLevel == 0){
       text = `${scoreDisplay} \nI guessed the country in my first try😊, can you beat this? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
     }
@@ -268,22 +308,26 @@ const GuessGame = () => {
         text = `${scoreDisplay} \nI could not guess the country😞, can you? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
       }
     }
-    if (navigator.share) {
-      navigator.share({
-        text,
-        title: 'Country Flag Guessing Game'
-      }).catch(() => {
-        navigator.clipboard.writeText(text);
-        setGameState(prev => ({
-          ...prev,
-          message: 'Result copied to clipboard!'
-        }));
+  
+    try {
+      // Use Capacitor Share API to open the native share dialog
+      await Share.share({
+        title: 'Country Flag Guessing Game',
+        text: text,
+        // url: 'https://daily-flag.netlify.app/',  // Optional, you can provide the URL to your game if needed
+        dialogTitle: 'Share your result'  // Customize the dialog title
       });
-    } else {
+      setHasShared(true); 
+    } catch (e) {
+      // Fallback if the native share fails, copy to clipboard instead
+      console.error("Native share failed, falling back to clipboard:", e);
+  
+      // Copy to clipboard
       navigator.clipboard.writeText(text);
+      setHasShared(true);
       setGameState(prev => ({
         ...prev,
-        message: 'Result copied to clipboard!'
+        message: 'Result copied to clipboard!, paste it to your chats :)'
       }));
     }
   };
@@ -414,14 +458,16 @@ const GuessGame = () => {
                     Guess
                   </Button>
                   {(gameState.gameOver || isBlocked) && (
-                    <Button
-                      onClick={shareResult}
-                      variant="outline"
-                      className="flex items-center justify-center gap-2 sm:gap-3 border-2 border-gray-300 hover:border-gray-400 bg-white text-gray-800 hover:bg-gray-100 shadow-sm rounded-lg py-2 sm:py-3 px-3 sm:px-4 text-sm sm:text-base transition-all duration-200"
-                    >
-                      <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                      Share
-                    </Button>
+                    <>
+                      <Button
+                        onClick={shareResult}
+                        variant="outline"
+                        className="flex items-center justify-center gap-2 sm:gap-3 border-2 border-gray-300 hover:border-gray-400 bg-white text-gray-800 hover:bg-gray-100 shadow-sm rounded-lg py-2 sm:py-3 px-3 sm:px-4 text-sm sm:text-base transition-all duration-200"
+                      >
+                        <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                        Share
+                      </Button>
+                    </>
                   )}
                 </div>
               </form>

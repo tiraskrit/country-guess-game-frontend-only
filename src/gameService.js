@@ -1,5 +1,6 @@
 import { format, isSameDay, startOfTomorrow, differenceInMilliseconds } from 'date-fns';
 import { ImageProcessor } from './imageProcessor';
+import { Share } from '@capacitor/share';
 
 // Extend String prototype to add hashCode method
 String.prototype.hashCode = function() {
@@ -27,12 +28,12 @@ class GameService {
     await this.scheduleNextReset();
   }
 
-  async loadCountries() {
+  async loadCountries(retryCount = 0, maxRetries = 3) {
     try {
       if (this.countryPool.length === 0) {
         const response = await fetch('https://restcountries.com/v3.1/all');
         if (!response.ok) throw new Error('Failed to fetch countries');
-  
+    
         const countries = await response.json();
         this.countryPool = countries.filter(country => 
           country.population > 500000 && country.cca2
@@ -41,8 +42,14 @@ class GameService {
       await this.getDailyCountry();
     } catch (error) {
       console.error('Failed to load countries!', error);
+      if (retryCount < maxRetries) {
+        console.warn(`Retrying loadCountries... (${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => this.loadCountries(retryCount + 1, maxRetries), 1000);
+      } else {
+        console.error("Max retries reached for loading countries.");
+      }
     }
-  }
+  }  
   
 
   scheduleNextReset() {

@@ -6,3 +6,5 @@ package-lock.json
 .vite/
 .vite-cache/
 .env
+
+android/

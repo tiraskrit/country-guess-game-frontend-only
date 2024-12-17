@@ -1,0 +1,12 @@
+{
+  "appId": "flag.guess.game",
+  "appName": "flag-guess-game",
+  "webDir": "dist",
+  "server": {
+      "androidScheme": "https",
+      "cleartext": true,
+      "allowNavigation": [
+        "restcountries.com"
+      ]
+    }
+}
