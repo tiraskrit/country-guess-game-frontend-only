@@ -127,6 +127,21 @@ const GuessGame = () => {
         await gameService.loadCountries();
         await fetchPlayerNames();
         fetchGameState();
+        
+        // Load the saved game state if it exists
+        const stored = localStorage.getItem('footballGuessGame');
+        if (stored) {
+          const { date, guesses, hintLevel, gameOver, playerName } = JSON.parse(stored);
+          if (date === gameService.getCurrentDate()) {
+            setGameState(prev => ({
+              ...prev,
+              guesses,
+              hintLevel,
+              gameOver,
+              playerName
+            }));
+          }
+        }
       } catch (err) {
         console.error("Initialization failed:", err);
         setGameState(prev => ({
@@ -278,6 +293,7 @@ const fetchGameState = async (retryCount = 0, maxRetries = 3) => {
       }
       
       setGuess('');
+      saveGameState(); // Save the game state after each guess
     } catch (error) {
       console.error('Error submitting guess:', error);
       setGameState(prev => ({
