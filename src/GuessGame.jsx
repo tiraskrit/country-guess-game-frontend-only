@@ -487,7 +487,7 @@ const GuessGame = () => {
                 <img
                   src={getImageSource(gameState.currentImage)}
                   alt="Country Flag"
-                  oncontextmenu="return false"
+                  onContextMenu={(e) => e.preventDefault()}
                   className="w-auto h-[150px] sm:h-[250px] md:h-[300px] object-contain rounded-lg transition-transform duration-300 hover:scale-105"
                 />
               </div>
