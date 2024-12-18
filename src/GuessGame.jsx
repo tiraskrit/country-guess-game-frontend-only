@@ -27,7 +27,7 @@ const GuessGame = () => {
   const [timeUntilReset, setTimeUntilReset] = useState('');
   const [players, setPlayers] = useState([]);
   const [filteredPlayers, setFilteredPlayers] = useState([]);
-  const [showRules, setShowRules] = useState(true);
+  const [showRules, setShowRules] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [error, setError] = useState(false);
   const [hasShared, setHasShared] = useState(false);
@@ -429,6 +429,23 @@ const GuessGame = () => {
 
   useEffect(() => {
     fetchPlayerNames();
+  }, []);
+
+  useEffect(() => {
+    const checkForSavedGame = async () => {
+      const currentDate = await gameService.getCurrentDate();
+      const stored = localStorage.getItem('footballGuessGame');
+      if (stored) {
+        const { date } = JSON.parse(stored);
+        if (date === currentDate) {
+          setShowRules(false);
+          return;
+        }
+      }
+      setShowRules(true);
+    };
+
+    checkForSavedGame();
   }, []);
 
   return (
