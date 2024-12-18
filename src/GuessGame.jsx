@@ -7,6 +7,7 @@ import AutocompleteInput from '@/components/ui/AutocompleteInput';
 import RulesDialog from '@/components/RulesDialog';
 import { gameService } from './gameService';
 import { Share } from '@capacitor/share'; 
+import './GuessGame.css';
 
 const GuessGame = () => {
   const [gameState, setGameState] = useState({
@@ -462,11 +463,11 @@ const GuessGame = () => {
   }, []);
 
   return (
-    <div className="min-h-screen h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-2 sm:p-4 md:p-6">
+    <div className="game-container flex items-center justify-center p-2 sm:p-4 md:p-6">
       <Card className="w-full max-w-4xl h-full mx-auto shadow-lg border-0 flex flex-col overflow-hidden">
         <CardHeader className="bg-white rounded-t-lg border-b border-gray-200 py-2 sm:py-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-6">
-            <CardTitle className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-800">
+            <CardTitle className="game-title text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold text-transparent">
               Guess the Country
             </CardTitle>
             <div className="flex items-center text-xs sm:text-sm text-gray-700 bg-gray-100 rounded-full px-3 sm:px-5 py-2 sm:py-3 shadow-sm">
@@ -475,27 +476,27 @@ const GuessGame = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col justify-between p-2 sm:p-4 md:p-6">
+        <CardContent className="flex-1 flex flex-col p-2 sm:p-4 md:p-6">
           {gameState.loading ? (
             <div className="flex justify-center items-center flex-grow">
-              <RefreshCw className="animate-spin text-blue-600 w-8 h-8 sm:w-12 sm:h-12" />
+              <RefreshCw className="loading-spinner text-blue-600 w-8 h-8 sm:w-12 sm:h-12" />
             </div>
           ) : (
-            <>
-              {/* Flag Image */}
-              <div className="flex-grow flex justify-center items-center bg-gradient-to-b from-white to-gray-50 rounded-xl overflow-hidden shadow-md p-2 sm:p-4 md:p-6 max-h-[200px] sm:max-h-[300px] md:max-h-[400px]">
+            <div className="flex flex-col h-full gap-4">
+              {/* Top Section - Flag Image */}
+              <div className="flag-container flex-shrink-0" style={{ height: '40vh' }}>
                 <img
                   src={getImageSource(gameState.currentImage)}
                   alt="Country Flag"
                   onContextMenu={(e) => e.preventDefault()}
-                  className="w-auto h-[150px] sm:h-[250px] md:h-[300px] object-contain rounded-lg transition-transform duration-300 hover:scale-105"
+                  className="flag-image w-auto h-full max-h-full object-contain rounded-lg"
                 />
               </div>
   
-              {/* Alerts */}
-              <div className="mt-2 sm:mt-4">
+              {/* Alerts Section */}
+              <div className="flex-shrink-0">
                 {gameState.gameOver && gameState.playerName && (
-                  <Alert className="mb-2 sm:mb-3 bg-blue-100 border border-blue-200 shadow-sm">
+                  <Alert className="mb-2 bg-blue-100 border border-blue-200 shadow-sm">
                     <AlertDescription className="text-blue-900 font-semibold text-xs sm:text-sm">
                       The Country was: <span className="font-extrabold text-blue-800">{gameState.playerName}</span>
                     </AlertDescription>
@@ -504,7 +505,7 @@ const GuessGame = () => {
   
                 {gameState.message && (
                   <Alert
-                    className={`mb-2 sm:mb-3 text-xs sm:text-sm rounded-lg shadow-sm ${
+                    className={`text-xs sm:text-sm rounded-lg shadow-sm ${
                       gameState.gameOver
                         ? 'bg-green-100 border-green-200'
                         : 'bg-gray-100 border-gray-200'
@@ -526,59 +527,61 @@ const GuessGame = () => {
                 )}
               </div>
   
-              {/* Input Form */}
-              <form onSubmit={handleGuess} className="flex-none space-y-2 sm:space-y-4 mt-2 sm:mt-4">
-                <AutocompleteInput
-                  value={guess}
-                  onChange={setGuess}
-                  options={players}
-                  placeholder={isBlocked ? "Game over, Come back tomorrow!" : "Enter the Country"}
-                  disabled={gameState.gameOver || isBlocked}
-                  className="w-full rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                />
-                <div className="flex gap-2 sm:gap-4">
-                  <Button
-                    type="submit"
-                    disabled={gameState.gameOver || isBlocked}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-medium py-2 sm:py-3 text-sm sm:text-base rounded-lg shadow-md transition-transform duration-200 hover:scale-105"
-                  >
-                    Guess
-                  </Button>
-                  {(gameState.gameOver || isBlocked) && (
-                    <>
+              <div className="flex-1 flex flex-col justify-start gap-6">
+                {/* Input Form */}
+                <form onSubmit={handleGuess} className="flex-none space-y-6 sm:space-y-6">
+                  <div className="relative">
+                    <AutocompleteInput
+                      value={guess}
+                      onChange={setGuess}
+                      options={players}
+                      placeholder={isBlocked ? "Game over, Come back tomorrow!" : "Enter the Country"}
+                      disabled={gameState.gameOver || isBlocked}
+                      className="w-full rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                    />
+                  </div>
+                  <div className="flex gap-2 sm:gap-4">
+                    <Button
+                      type="submit"
+                      disabled={gameState.gameOver || isBlocked}
+                      className="primary-button button-transition flex-1 text-white font-medium py-2 sm:py-3 text-sm sm:text-base rounded-lg shadow-md"
+                    >
+                      Guess
+                    </Button>
+                    {(gameState.gameOver || isBlocked) && (
                       <Button
                         onClick={shareResult}
                         variant="outline"
-                        className="flex items-center justify-center gap-2 sm:gap-3 border-2 border-gray-300 hover:border-gray-400 bg-white text-gray-800 hover:bg-gray-100 shadow-sm rounded-lg py-2 sm:py-3 px-3 sm:px-4 text-sm sm:text-base transition-all duration-200"
+                        className="button-transition flex items-center justify-center gap-2 sm:gap-3 border-2 border-gray-300 hover:border-gray-400 bg-white text-gray-800 hover:bg-gray-100 shadow-sm rounded-lg py-2 sm:py-3 px-3 sm:px-4 text-sm sm:text-base"
                       >
                         <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
                         Share
                       </Button>
-                    </>
-                  )}
-                </div>
-              </form>
+                    )}
+                  </div>
+                </form>
   
-              {/* Guesses */}
-              <div className="mt-4 sm:mt-6 flex flex-wrap gap-2 sm:gap-3 justify-center sm:justify-start">
-                {gameState.guesses.map((g, i) => (
-                  <div
-                    key={i}
-                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg transform transition-all duration-200 ${
-                      g.correct
-                        ? 'bg-gradient-to-br from-green-400 to-green-500 hover:from-green-500 hover:to-green-600'
-                        : 'bg-gradient-to-br from-red-400 to-red-500 hover:from-red-500 hover:to-red-600'
-                    } shadow-md hover:scale-110`}
-                  />
-                ))}
+                {/* Guess Indicators */}
+                <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
+                  {gameState.guesses.map((g, i) => (
+                    <div
+                      key={i}
+                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg ${
+                        g.correct
+                          ? 'correct-guess guess-indicator-transition'
+                          : 'incorrect-guess guess-indicator-transition'
+                      } shadow-md`}
+                    />
+                  ))}
+                </div>
               </div>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
       <RulesDialog open={showRules} onClose={() => setShowRules(false)} />
     </div>
-  );      
+  );     
 };
 
 export default GuessGame;

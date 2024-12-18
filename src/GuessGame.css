@@ -1,0 +1,104 @@
+/* Main container styles */
+.game-container {
+  min-height: 100vh;
+  height: 100vh;
+  background: linear-gradient(to bottom, #EFF6FF, #E0E7FF);
+}
+
+/* Card title gradient */
+.game-title {
+  background: linear-gradient(to right, #1D4ED8, #3730A3);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Button gradients */
+.primary-button {
+  background: linear-gradient(to right, #2563EB, #4338CA);
+}
+
+.primary-button:hover {
+  background: linear-gradient(to right, #1D4ED8, #3730A3);
+}
+
+/* Guess result indicators */
+.correct-guess {
+  background: linear-gradient(to bottom right, #4ADE80, #22C55E);
+}
+
+.correct-guess:hover {
+  background: linear-gradient(to bottom right, #22C55E, #16A34A);
+}
+
+.incorrect-guess {
+  background: linear-gradient(to bottom right, #F87171, #EF4444);
+}
+
+.incorrect-guess:hover {
+  background: linear-gradient(to bottom right, #EF4444, #DC2626);
+}
+
+.flag-image:hover {
+  transform: scale(1.05);
+}
+
+/* Animation for loading spinner */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Transitions */
+.button-transition {
+  transition: all 200ms;
+}
+
+.button-transition:hover {
+  transform: scale(1.05);
+}
+
+.guess-indicator-transition {
+  transition: all 200ms;
+}
+
+.guess-indicator-transition:hover {
+  transform: scale(1.1);
+}
+
+.flag-container {
+  background: linear-gradient(to bottom, #FFFFFF, #F9FAFB);
+  min-height: 180px;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.flag-image {
+  transition: transform 300ms;
+  max-height: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+@media screen and (max-height: 700px) {
+  .flag-container {
+    height: 30vh;
+    min-height: 150px;
+  }
+}
+
+.relative {
+  position: relative;
+  z-index: 50;
+}
