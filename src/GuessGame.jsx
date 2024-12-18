@@ -164,9 +164,22 @@ const GuessGame = () => {
         throw new Error("Invalid country data received");
       }
 
+      // Check if the game is over and set the image accordingly
+      const stored = localStorage.getItem('footballGuessGame');
+      let gameOver = false;
+      let hintLevel = 0;
+      if (stored) {
+        const { gameOver: storedGameOver, hintLevel: storedHintLevel } = JSON.parse(stored);
+        gameOver = storedGameOver;
+        hintLevel = storedHintLevel;
+      }
+  
+      // If the game is over, show the unblurred flag
+      const imageToDisplay = gameOver ? country.flagUrl : (hintLevel > 0 ? country.flagUrl : country.blurredImage);
+  
       setGameState(prev => ({
         ...prev,
-        currentImage: country.blurredImage,
+        currentImage: imageToDisplay,
         gameId: country.name.hashCode?.() || Math.random(),
         nextReset,
         currentDate,
@@ -474,6 +487,7 @@ const GuessGame = () => {
                 <img
                   src={getImageSource(gameState.currentImage)}
                   alt="Country Flag"
+                  oncontextmenu="return false"
                   className="w-auto h-[150px] sm:h-[250px] md:h-[300px] object-contain rounded-lg transition-transform duration-300 hover:scale-105"
                 />
               </div>
