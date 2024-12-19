@@ -155,28 +155,38 @@ const GuessGame = () => {
   
   const fetchGameState = async (retryCount = 0, maxRetries = 3) => {
     setGameState(prev => ({ ...prev, loading: true }));
-
+  
     try {
       const country = await gameService.getDailyCountry();
       const currentDate = await gameService.getCurrentDate();
       const nextReset = await gameService.getNextResetTime();
-
+  
       if (!country || !country.blurredImage || !country.name) {
         throw new Error("Invalid country data received");
       }
-
-      // Check if the game is over and set the image accordingly
+  
+      // Check if there's a stored game for today
       const stored = localStorage.getItem('footballGuessGame');
       let gameOver = false;
       let hintLevel = 0;
+      let shouldUseBlurredImage = true; // Default to blurred image
+  
       if (stored) {
-        const { gameOver: storedGameOver, hintLevel: storedHintLevel } = JSON.parse(stored);
-        gameOver = storedGameOver;
-        hintLevel = storedHintLevel;
+        const storedData = JSON.parse(stored);
+        // Only use stored state if it's from today
+        if (storedData.date === currentDate) {
+          gameOver = storedData.gameOver;
+          hintLevel = storedData.hintLevel;
+          // Show unblurred image if game is over or hints have been used
+          shouldUseBlurredImage = !gameOver && hintLevel === 0;
+        } else {
+          // If stored data is from a different date, start fresh with blurred image
+          localStorage.removeItem('footballGuessGame');
+        }
       }
   
-      // If the game is over, show the unblurred flag
-      const imageToDisplay = gameOver ? country.flagUrl : (hintLevel > 0 ? country.flagUrl : country.blurredImage);
+      // Determine which image to display
+      const imageToDisplay = shouldUseBlurredImage ? country.blurredImage : country.flagUrl;
   
       setGameState(prev => ({
         ...prev,
@@ -187,8 +197,20 @@ const GuessGame = () => {
         loading: false,
         message: null,
       }));
-
-      checkStoredGame();
+  
+      // Only restore stored game state if it's from today
+      if (stored) {
+        const storedData = JSON.parse(stored);
+        if (storedData.date === currentDate) {
+          setGameState(prev => ({
+            ...prev,
+            guesses: storedData.guesses,
+            hintLevel: storedData.hintLevel,
+            gameOver: storedData.gameOver,
+            playerName: storedData.playerName
+          }));
+        }
+      }
     } catch (error) {
       console.error("Error in fetchGameState:", error);
       if (retryCount < maxRetries) {
