@@ -1,6 +1,5 @@
 import { format, isSameDay } from 'date-fns';
 import { ImageProcessor } from './imageProcessor';
-import { Share } from '@capacitor/share';
 
 String.prototype.hashCode = function() {
     let hash = 0;
