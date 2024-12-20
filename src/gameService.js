@@ -2,16 +2,15 @@ import { format, isSameDay } from 'date-fns';
 import { ImageProcessor } from './imageProcessor';
 import { Share } from '@capacitor/share';
 
-// Extend String prototype to add hashCode method
 String.prototype.hashCode = function() {
     let hash = 0;
     for (let i = 0; i < this.length; i++) {
       const char = this.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+      hash = hash & hash;
     }
     return Math.abs(hash);
-  };
+};
 
 class GameService {
   constructor() {
@@ -20,6 +19,8 @@ class GameService {
     this.lastResetDate = null;
     this.resetTimer = null;
     this.onReset = null;
+    this.cachedUtcTime = null;
+    this.lastUtcFetch = null;
   }
 
   async initialize(onReset) {
@@ -49,90 +50,124 @@ class GameService {
         console.error("Max retries reached for loading countries.");
       }
     }
-  }  
-  
+  }
 
-  scheduleNextReset() {
-    // Clear existing timer
+  async getUtcDate() {
+    // Check if we have a recent cache (within last minute)
+    const now = Date.now();
+    if (this.cachedUtcTime && this.lastUtcFetch && 
+        (now - this.lastUtcFetch) < 60000) {
+      // Return cached time plus elapsed time
+      return new Date(this.cachedUtcTime.getTime() + (now - this.lastUtcFetch));
+    }
+
+    try {
+      const response = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
+      if (!response.ok) throw new Error('Failed to fetch UTC time');
+      
+      const data = await response.json();
+      const utcDate = new Date(data.datetime);
+      
+      // Cache the result
+      this.cachedUtcTime = utcDate;
+      this.lastUtcFetch = now;
+      
+      return utcDate;
+    } catch (error) {
+      console.warn("Failed to fetch UTC time, falling back to local UTC:", error);
+      // Fallback to local UTC time
+      return new Date(new Date().toISOString());
+    }
+  }
+
+  // Add back getCurrentDate for compatibility
+  async getCurrentDate() {
+    const utcDate = await this.getUtcDate();
+    return utcDate.toISOString().split('T')[0];
+  }
+
+  async getCurrentUtcDateString() {
+    return this.getCurrentDate(); // Reuse getCurrentDate implementation
+  }
+
+  async scheduleNextReset() {
     if (this.resetTimer) {
       clearTimeout(this.resetTimer);
     }
 
-    // Calculate UTC midnight for the next day
-    const now = new Date();
-    const nextUtcMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-    const timeUntilReset = nextUtcMidnight.getTime() - now.getTime();
+    const utcNow = await this.getUtcDate();
+    const nextUtcMidnight = new Date(Date.UTC(
+      utcNow.getUTCFullYear(),
+      utcNow.getUTCMonth(),
+      utcNow.getUTCDate() + 1
+    ));
+    
+    const timeUntilReset = nextUtcMidnight.getTime() - utcNow.getTime();
 
-    // Schedule the reset
     this.resetTimer = setTimeout(async () => {
-        this.lastResetDate = null;
-        this.currentCountry = null;
-        localStorage.removeItem('daily_country_cache');
+      this.lastResetDate = null;
+      this.currentCountry = null;
+      localStorage.removeItem('daily_country_cache');
 
-        // Reload countries and notify component
-        await this.loadCountries();
-        if (this.onReset) {
-            this.onReset();
-        }
+      await this.loadCountries();
+      if (this.onReset) {
+        this.onReset();
+      }
 
-        // Schedule next reset
-        this.scheduleNextReset();
+      this.scheduleNextReset();
     }, timeUntilReset);
   }
 
-  getCurrentDate() {
-    // Return the current UTC date in 'yyyy-MM-dd' format
-    return new Date().toISOString().split('T')[0];
+  async getNextResetTime() {
+    const utcNow = await this.getUtcDate();
+    const nextUtcMidnight = new Date(Date.UTC(
+      utcNow.getUTCFullYear(),
+      utcNow.getUTCMonth(),
+      utcNow.getUTCDate() + 1
+    ));
+    return Math.floor((nextUtcMidnight.getTime() - utcNow.getTime()) / 1000);
   }
 
-  getNextResetTime() {
-    const now = new Date();
-    const nextUtcMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-    return Math.floor((nextUtcMidnight.getTime() - now.getTime()) / 1000);
-  }
-
-  loadCache() {
+  async loadCache() {
     try {
-        const cache = localStorage.getItem('daily_country_cache');
-        if (cache) {
-            const { date, country } = JSON.parse(cache);
-            if (isSameDay(new Date(date), new Date())) {
-                return country;
-            }
+      const cache = localStorage.getItem('daily_country_cache');
+      if (cache) {
+        const { date, country } = JSON.parse(cache);
+        const utcNow = await this.getUtcDate();
+        if (isSameDay(new Date(date), utcNow)) {
+          return country;
         }
+      }
     } catch (error) {
-        console.warn("Failed to load cache from localStorage:", error);
+      console.warn("Failed to load cache from localStorage:", error);
     }
     return null;
-}
+  }
 
-async saveCache(countryData) {
+  async saveCache(countryData) {
     try {
-        const cache = {
-            date: this.getCurrentDate(),
-            country: countryData
-        };
-        localStorage.setItem('daily_country_cache', JSON.stringify(cache));
+      const cache = {
+        date: await this.getCurrentDate(),
+        country: countryData
+      };
+      localStorage.setItem('daily_country_cache', JSON.stringify(cache));
     } catch (error) {
-        console.warn("Failed to save cache to localStorage:", error);
+      console.warn("Failed to save cache to localStorage:", error);
     }
-}
+  }
 
   async getDailyCountry() {
-    const currentDate = this.getCurrentDate();
+    const currentDate = await this.getCurrentDate();
     
     if (this.lastResetDate !== currentDate) {
-      // Try loading from cache first
-      const cachedCountry = this.loadCache();
+      const cachedCountry = await this.loadCache();
       if (cachedCountry) {
         this.currentCountry = cachedCountry;
       } else {
-        // Select new country based on today's date as seed
         const dateNum = parseInt(currentDate.replace(/-/g, ''));
         const index = dateNum % this.countryPool.length;
         const country = this.countryPool[index];
         
-        // Process images
         const flagUrl = country.flags.png;
         const blurredImage = await ImageProcessor.blurImage(flagUrl);
         
@@ -159,22 +194,20 @@ async saveCache(countryData) {
     const response = {
       correct,
       hintLevel,
-      nextReset: this.getNextResetTime(),
+      nextReset: await this.getNextResetTime(),
       hintText: null,
       hintImage: null,
       playerName: null
     };
 
-    // Show original flag and country name for game over scenarios
     if (correct || hintLevel >= 4) {
       response.imageUrl = country.flagUrl;
       response.playerName = country.name;
       return response;
     }
 
-    // Hint progression
     if (!correct && hintLevel < 4) {
-        response.imageUrl = hintLevel === 0 ? country.flagUrl : country.flagUrl;
+      response.imageUrl = hintLevel === 0 ? country.flagUrl : country.flagUrl;
       switch (hintLevel) {
         case 0:
           response.hintText = "Unblurred Flag";

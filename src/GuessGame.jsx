@@ -33,53 +33,41 @@ const GuessGame = () => {
   const [hasShared, setHasShared] = useState(false);
 
   const formatTimeUntilReset = (seconds) => {
+    if (!seconds) return '--h --m';
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
   };
 
-  useEffect(() => {
-    const checkGameStatus = () => {
-      const gameStatus = localStorage.getItem(`gameStatus_${gameState.currentDate}`);
-      if (gameStatus === 'completed') {
-        setIsBlocked(true);
-        
-        // Restore previous game state for sharing
-        const stored = localStorage.getItem('footballGuessGame');
-        if (stored) {
-          const { guesses, playerName } = JSON.parse(stored);
-          setGameState(prev => ({
-            ...prev,
-            guesses,
-            playerName,
-            gameOver: true
-          }));
-        }
+  const checkGameStatus = async () => {
+    const currentDate = await gameService.getCurrentDate();
+    const gameStatus = localStorage.getItem(`gameStatus_${currentDate}`);
+    if (gameStatus === 'completed') {
+      setIsBlocked(true);
+      
+      const stored = localStorage.getItem('footballGuessGame');
+      if (stored) {
+        const { guesses, playerName } = JSON.parse(stored);
+        setGameState(prev => ({
+          ...prev,
+          guesses,
+          playerName,
+          gameOver: true
+        }));
       }
-    };
-    
+    }
+  };
+
+  // Modified to handle async time updates
+  useEffect(() => {
     if (gameState.currentDate) {
       checkGameStatus();
     }
   }, [gameState.currentDate]);
 
   useEffect(() => {
-    const initGame = async () => {
-        try {
-            await gameService.initialize(() => fetchGameState());
-            fetchGameState();
-        } catch (err) {
-            console.error("Game initialization failed:", err);
-            setGameState(prev => ({
-                ...prev,
-                message: 'Critical error initializing game.',
-                loading: false
-            }));
-        }
-    };
-
-    initGame();
-
+    initGameState();
+    
     return () => {
         gameService.cleanup();
     };
@@ -104,93 +92,143 @@ const GuessGame = () => {
     return false;
   };
 
-  const saveGameState = () => {
-    const toStore = {
-      date: gameState.currentDate,
-      guesses: gameState.guesses,
-      hintLevel: gameState.hintLevel,
-      gameOver: gameState.gameOver,
-      playerName: gameState.playerName
-    };
-    localStorage.setItem('footballGuessGame', JSON.stringify(toStore));
-    
-    if (gameState.gameOver) {
-      localStorage.setItem(`gameStatus_${gameState.currentDate}`, 'completed');
-      setIsBlocked(true);
+  const saveGameState = async () => {
+    try {
+      const currentDate = await gameService.getCurrentDate();
+      const toStore = {
+        date: currentDate,
+        guesses: gameState.guesses,
+        hintLevel: gameState.hintLevel,
+        gameOver: gameState.gameOver,
+        playerName: gameState.playerName
+      };
+      localStorage.setItem('footballGuessGame', JSON.stringify(toStore));
+      
+      if (gameState.gameOver) {
+        localStorage.setItem(`gameStatus_${currentDate}`, 'completed');
+        setIsBlocked(true);
+      }
+    } catch (error) {
+      console.error("Error saving game state:", error);
+    }
+  };
+
+  const initGameState = async () => {
+    try {
+      await gameService.initialize();
+      await gameService.loadCountries();
+      await fetchPlayerNames();
+      
+      const currentDate = await gameService.getCurrentDate();
+      const nextReset = await gameService.getNextResetTime();
+      
+      const stored = localStorage.getItem('footballGuessGame');
+      if (stored) {
+        const { date, guesses, hintLevel, gameOver, playerName } = JSON.parse(stored);
+        if (date === currentDate) {
+          setGameState(prev => ({
+            ...prev,
+            guesses,
+            hintLevel,
+            gameOver,
+            playerName,
+            currentDate,
+            nextReset,
+            loading: false
+          }));
+          return;
+        }
+      }
+      
+      await fetchGameState();
+    } catch (err) {
+      console.error("Initialization failed:", err);
+      setGameState(prev => ({
+        ...prev,
+        message: 'Error initializing game.',
+        loading: false,
+      }));
+    }
+  };
+  
+  
+  const fetchGameState = async (retryCount = 0, maxRetries = 3) => {
+    setGameState(prev => ({ ...prev, loading: true }));
+
+    try {
+      const country = await gameService.getDailyCountry();
+      const currentDate = await gameService.getCurrentDate();
+      const nextReset = await gameService.getNextResetTime();
+
+      if (!country || !country.blurredImage || !country.name) {
+        throw new Error("Invalid country data received");
+      }
+
+      setGameState(prev => ({
+        ...prev,
+        currentImage: country.blurredImage,
+        gameId: country.name.hashCode?.() || Math.random(),
+        nextReset,
+        currentDate,
+        loading: false,
+        message: null,
+      }));
+
+      checkStoredGame();
+    } catch (error) {
+      console.error("Error in fetchGameState:", error);
+      if (retryCount < maxRetries) {
+        setTimeout(() => fetchGameState(retryCount + 1, maxRetries), 1000);
+      } else {
+        setGameState(prev => ({
+          ...prev,
+          loading: false,
+          message: 'Error loading game state.'
+        }));
+      }
     }
   };
 
   useEffect(() => {
-    const initGameState = async () => {
+    let timerInterval;
+    let resetCheckInterval;
+
+    const updateTimer = async () => {
       try {
-        await gameService.initialize(); // Ensure initialization is complete
-        await gameService.loadCountries();
-        await fetchPlayerNames();
-        fetchGameState();
-        
-        // Load the saved game state if it exists
-        const stored = localStorage.getItem('footballGuessGame');
-        if (stored) {
-          const { date, guesses, hintLevel, gameOver, playerName } = JSON.parse(stored);
-          if (date === gameService.getCurrentDate()) {
-            setGameState(prev => ({
-              ...prev,
-              guesses,
-              hintLevel,
-              gameOver,
-              playerName
-            }));
-          }
-        }
-      } catch (err) {
-        console.error("Initialization failed:", err);
+        const nextReset = await gameService.getNextResetTime();
         setGameState(prev => ({
           ...prev,
-          message: 'Error initializing game.',
-          loading: false,
+          nextReset
         }));
+        setTimeUntilReset(formatTimeUntilReset(nextReset));
+      } catch (error) {
+        console.error("Error updating timer:", error);
       }
     };
-  
-    initGameState();
+
+    const checkForReset = async () => {
+      try {
+        const currentDate = await gameService.getCurrentDate();
+        if (currentDate !== gameState.currentDate) {
+          await fetchGameState();
+        }
+      } catch (error) {
+        console.error("Error checking for reset:", error);
+      }
+    };
+
+    // Initial update
+    updateTimer();
+
+    // Set up intervals
+    timerInterval = setInterval(updateTimer, 1000);
+    resetCheckInterval = setInterval(checkForReset, 60000);
+
+    return () => {
+      clearInterval(timerInterval);
+      clearInterval(resetCheckInterval);
+    };
   }, []);
-  
-  
-const fetchGameState = async (retryCount = 0, maxRetries = 3) => {
-  setGameState(prev => ({ ...prev, loading: true }));
-
-  try {
-    const country = await gameService.getDailyCountry();
-    if (!country || !country.blurredImage || !country.name) {
-      throw new Error("Invalid country data received");
-    }
-
-    setGameState(prev => ({
-      ...prev,
-      currentImage: country.blurredImage,
-      gameId: country.name.hashCode?.() || Math.random(),
-      nextReset: gameService.getNextResetTime(),
-      currentDate: gameService.getCurrentDate(),
-      loading: false,
-      message: null,
-    }));
-
-    checkStoredGame();
-  } catch (error) {
-    console.error("Error in fetchGameState:", error);
-
-    if (retryCount < maxRetries) {
-      console.warn(`Retrying fetchGameState... (${retryCount + 1}/${maxRetries})`);
-      setTimeout(() => fetchGameState(retryCount + 1, maxRetries), 1000);
-    } else {
-      console.error("Max retries reached. Could not load the game.");
-      setGameState(prev => ({
-        ...prev,
-        loading: false,
-      }));
-    }
-  }
-};
 
 
   const getImageSource = (imageData) => {
@@ -304,46 +342,48 @@ const fetchGameState = async (retryCount = 0, maxRetries = 3) => {
   };
 
   const shareResult = async () => {
-    const scoreDisplay = gameState.guesses.map(g =>
-      g.correct ? '🟩' : '🟥'
-    ).join('');
-  
-    let text;
-    const lastGuess = gameState.guesses[gameState.guesses.length - 1];
-  
-    if (gameState.hintLevel == 0){
-      text = `${scoreDisplay} \nI guessed the country in my first try😊, can you beat this? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
-    }
-    else if (gameState.hintLevel < 4){
-      text = `${scoreDisplay} \nIt took me ${gameState.hintLevel + 1} tries to Guess the Country, can you beat this? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
-    }
-    else {
-      if (lastGuess.correct) {
-        text = `${scoreDisplay} \nI guessed the country on my last try😫! Can you beat this? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
-      } else {
-        text = `${scoreDisplay} \nI could not guess the country😞, can you? \nCountry Flag Guessing Game: ${gameState.currentDate} \nNext Flag in ${timeUntilReset}! \nPlay the game here: https://daily-flag.netlify.app/`;
-      }
-    }
-  
     try {
-      // Use Capacitor Share API to open the native share dialog
-      await Share.share({
-        title: 'Country Flag Guessing Game',
-        text: text,
-        // url: 'https://daily-flag.netlify.app/',  // Optional, you can provide the URL to your game if needed
-        dialogTitle: 'Share your result'  // Customize the dialog title
-      });
-      setHasShared(true); 
-    } catch (e) {
-      // Fallback if the native share fails, copy to clipboard instead
-      console.error("Native share failed, falling back to clipboard:", e);
-  
-      // Copy to clipboard
-      navigator.clipboard.writeText(text);
-      setHasShared(true);
+      const nextReset = await gameService.getNextResetTime();
+      const formattedTime = formatTimeUntilReset(nextReset);
+      
+      const scoreDisplay = gameState.guesses.map(g =>
+        g.correct ? '🟩' : '🟥'
+      ).join('');
+    
+      let text;
+      const lastGuess = gameState.guesses[gameState.guesses.length - 1];
+    
+      if (gameState.hintLevel === 0) {
+        text = `${scoreDisplay}\nI guessed the country in my first try😊, can you beat this?\nCountry Flag Guessing Game: ${gameState.currentDate}\nNext Flag in ${formattedTime}!\nPlay the game here: https://daily-flag.netlify.app/`;
+      } else if (gameState.hintLevel < 4) {
+        text = `${scoreDisplay}\nIt took me ${gameState.hintLevel + 1} tries to Guess the Country, can you beat this?\nCountry Flag Guessing Game: ${gameState.currentDate}\nNext Flag in ${formattedTime}!\nPlay the game here: https://daily-flag.netlify.app/`;
+      } else {
+        text = lastGuess.correct
+          ? `${scoreDisplay}\nI guessed the country on my last try😫! Can you beat this?\nCountry Flag Guessing Game: ${gameState.currentDate}\nNext Flag in ${formattedTime}!\nPlay the game here: https://daily-flag.netlify.app/`
+          : `${scoreDisplay}\nI could not guess the country😞, can you?\nCountry Flag Guessing Game: ${gameState.currentDate}\nNext Flag in ${formattedTime}!\nPlay the game here: https://daily-flag.netlify.app/`;
+      }
+    
+      try {
+        await Share.share({
+          title: 'Country Flag Guessing Game',
+          text: text,
+          dialogTitle: 'Share your result'
+        });
+        setHasShared(true);
+      } catch (e) {
+        console.error("Native share failed, falling back to clipboard:", e);
+        await navigator.clipboard.writeText(text);
+        setHasShared(true);
+        setGameState(prev => ({
+          ...prev,
+          message: 'Result copied to clipboard!, paste it to your chats :)'
+        }));
+      }
+    } catch (error) {
+      console.error("Error sharing result:", error);
       setGameState(prev => ({
         ...prev,
-        message: 'Result copied to clipboard!, paste it to your chats :)'
+        message: 'Error sharing result'
       }));
     }
   };
