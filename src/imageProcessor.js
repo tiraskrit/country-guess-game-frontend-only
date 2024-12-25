@@ -26,7 +26,7 @@ export class ImageProcessor {
       const data = imageData.data;
 
       // Apply Gaussian blur, radius = 100
-      const blurredData = ImageProcessor.gaussianBlur(data, canvas.width, canvas.height, 70);
+      const blurredData = ImageProcessor.gaussianBlur(data, canvas.width, canvas.height, 80);
 
       // Put blurred image data back to canvas
       ctx.putImageData(new ImageData(blurredData, canvas.width, canvas.height), 0, 0);
