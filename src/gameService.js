@@ -61,11 +61,11 @@ class GameService {
     }
 
     try {
-      const response = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
+      const response = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=UTC');
       if (!response.ok) throw new Error('Failed to fetch UTC time');
       
       const data = await response.json();
-      const utcDate = new Date(data.datetime);
+      const utcDate = new Date(data.dateTime);
       
       // Cache the result
       this.cachedUtcTime = utcDate;
