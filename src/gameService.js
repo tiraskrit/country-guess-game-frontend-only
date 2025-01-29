@@ -11,6 +11,12 @@ String.prototype.hashCode = function() {
     return Math.abs(hash);
 };
 
+const isSameUTCDay = (date1, date2) => {
+  return date1.getUTCFullYear() === date2.getUTCFullYear() &&
+         date1.getUTCMonth() === date2.getUTCMonth() &&
+         date1.getUTCDate() === date2.getUTCDate();
+};
+
 class GameService {
   constructor() {
     this.countryPool = [];
@@ -133,7 +139,7 @@ class GameService {
       if (cache) {
         const { date, country } = JSON.parse(cache);
         const utcNow = await this.getUtcDate();
-        if (isSameDay(new Date(date), utcNow)) {
+        if (isSameUTCDay(new Date(date), utcNow)) {
           return country;
         }
       }
